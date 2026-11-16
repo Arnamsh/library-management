@@ -1,0 +1,48 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: library-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}
+      MYSQL_USER: ${MYSQL_USER:-wordpress}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wordpress_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+    volumes:
+      - library_db_data:/var/lib/mysql
+    networks:
+      - library_network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  wordpress:
+    image: wordpress:latest
+    container_name: library-wordpress
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WORDPRESS_PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+      WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpress_password}
+    volumes:
+      - library_wordpress_data:/var/www/html
+    networks:
+      - library_network
+
+volumes:
+  library_db_data:
+  library_wordpress_data:
+
+networks:
+  library_network:
+    name: library_network
+    driver: bridge
